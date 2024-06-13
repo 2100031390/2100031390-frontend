@@ -1,51 +1,117 @@
-// src/components/ProductsList.js
-import React, { useState, useEffect } from 'react';
-import { getProducts } from '../Api';
-import { Grid, Card, CardContent, Typography, CircularProgress } from '@mui/material';
+// src/components/ProductList.js
+import React, { useEffect, useState } from 'react';
+import { fetchProducts } from '../utils/api'; // Adjust path as per your project structure
+import ProductCard from './ProductCard';
+import './ProductList.css'; // Importing CSS for styling
 
-const ProductsList = () => {
-    const [products, setProducts] = useState([]);
-    const [filteredProducts, setFilteredProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+const ProductList = () => {
+  const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [sortCriteria, setSortCriteria] = useState('rating'); // Default sorting by rating
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const productsData = await getProducts('AMZ', 'Laptop', 10, 1, 10000); // Example fetch
-                setProducts(productsData);
-                setFilteredProducts(productsData); // Initialize filteredProducts with all products
-            } catch (error) {
-                setError('Error fetching products. Please try again later.');
-            } finally {
-                setLoading(false);
-            }
-        };
+  // Define dropdown options
+  const companies = ["AMZ", "FLP", "SNP", "MYN", "AZO"];
+  const categories = ["Phone", "Computer", "TV", "EarPhone", "Tablet", "Charger", "Mouse", "KeyPad", "Bluetooth", "PenDrive", "Remote", "Speaker", "Laptop", "PC", "HeadSet"];
 
-        fetchProducts();
-    }, []);
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchProducts(selectedCategory, selectedCompany); // Pass selected category and company to API call
+        console.log('Fetched products:', data);
+        setProducts(data); // Set original products
+        setFilteredProducts(data); // Initialize filtered products with all products
+      } catch (error) {
+        setError('Failed to fetch products. Please try again later.');
+        console.error('Error fetching products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (loading) return <CircularProgress />;
-    if (error) return <Typography variant="body1" color="error">{error}</Typography>;
+    loadProducts();
+  }, [selectedCategory, selectedCompany]);
 
-    return (
-        <Grid container spacing={2}>
-            {filteredProducts.map(product => (
-                <Grid item key={product.id} xs={12} sm={6} md={4}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h5">{product.name}</Typography>
-                            <Typography>Company: {product.company}</Typography>
-                            <Typography>Price: ${product.price}</Typography>
-                            <Typography>Rating: {product.rating}</Typography>
-                            <Typography>Discount: {product.discount}%</Typography>
-                            <Typography>Availability: {product.availability ? 'In Stock' : 'Out of Stock'}</Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            ))}
-        </Grid>
-    );
+  const handleSortChange = (event) => {
+    const selectedCriteria = event.target.value;
+    setSortCriteria(selectedCriteria);
+    const sorted = sortProducts(filteredProducts, selectedCriteria);
+    setFilteredProducts(sorted);
+  };
+
+  const handleCompanyChange = (event) => {
+    const selectedCompany = event.target.value;
+    setSelectedCompany(selectedCompany);
+  };
+
+  const handleCategoryChange = (event) => {
+    const selectedCategory = event.target.value;
+    setSelectedCategory(selectedCategory);
+  };
+
+  const sortProducts = (products, criteria) => {
+    return products.slice().sort((a, b) => {
+      switch (criteria) {
+        case 'price':
+          return a.price - b.price;
+        case 'rating':
+          return b.rating - a.rating;
+        case 'discount':
+          return b.discount - a.discount;
+        default:
+          return 0;
+      }
+    });
+  };
+
+  if (loading) {
+    return <div>Loading products...</div>;
+  }
+
+  if (error) {
+    return <div className="error-message">{error}</div>;
+  }
+
+  return (
+    <div className="product-list-container">
+      <div className="filters">
+        <label htmlFor="company">Select Company:</label>
+        <select id="company" value={selectedCompany} onChange={handleCompanyChange}>
+          <option value="">All</option>
+          {companies.map(company => (
+            <option key={company} value={company}>{company}</option>
+          ))}
+        </select>
+
+        <label htmlFor="category">Select Category:</label>
+        <select id="category" value={selectedCategory} onChange={handleCategoryChange}>
+          <option value="">All</option>
+          {categories.map(category => (
+            <option key={category} value={category}>{category}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="sort-options">
+        <label htmlFor="sort">Sort by:</label>
+        <select id="sort" value={sortCriteria} onChange={handleSortChange}>
+          <option value="rating">Rating</option>
+          <option value="price">Price</option>
+          <option value="discount">Discount</option>
+        </select>
+      </div>
+
+      <div className="product-list">
+        {filteredProducts.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+    </div>
+  );
 };
 
-export default ProductsList;
+export default ProductList;
